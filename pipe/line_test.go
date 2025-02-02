@@ -25,23 +25,23 @@ func (suite *BaseTestSuite) SetupSuite() {
 }
 
 func (suite *BaseTestSuite) TearDownSuite() {
-	err := os.RemoveAll("testdata/tmp")
+	err := os.RemoveAll("../testdata/tmp")
 	require.NoError(suite.T(), err)
 }
 
 func (suite *BaseTestSuite) TestPipe() {
 	dirLine, err := Line(
-		OsRemoveAll("testdata/tmp"),
-		DirMakeAll("testdata/tmp", os.ModePerm),
+		OsRemoveAll("../testdata/tmp"),
+		DirMakeAll("../testdata/tmp", os.ModePerm),
 	)
 	require.NoError(suite.T(), err)
 
 	hash := "kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c="
 	fileLine, err := Line(
 		Timeout(time.Second),
-		FileOpen("testdata/test.txt"),
+		FileOpen("../testdata/test.txt"),
 		Sha256(&hash),
-		FileCreate("testdata/tmp/test.txt"),
+		FileCreate("../testdata/tmp/test.txt"),
 	)
 	require.NoError(suite.T(), err)
 
@@ -58,21 +58,21 @@ func (suite *BaseTestSuite) TestPipe() {
 	require.NotNil(suite.T(), out.Sha256)
 	require.EqualValues(suite.T(), hash, *out.Sha256)
 	require.EqualValues(suite.T(),
-		&types.File{Path: "testdata/test.txt"},
+		&types.File{Path: "../testdata/test.txt"},
 		out.FileOpen,
 	)
 	require.EqualValues(suite.T(),
-		&types.File{Path: "testdata/tmp/test.txt"},
+		&types.File{Path: "../testdata/tmp/test.txt"},
 		out.FileCreate,
 	)
 
-	testFile, err := os.Open("testdata/test.txt")
+	testFile, err := os.Open("../testdata/test.txt")
 	require.NoError(suite.T(), err)
 	defer testFile.Close()
 	testData, err := io.ReadAll(testFile)
 	require.NoError(suite.T(), err)
 
-	tmpFile, err := os.Open("testdata/tmp/test.txt")
+	tmpFile, err := os.Open("../testdata/tmp/test.txt")
 	require.NoError(suite.T(), err)
 	defer tmpFile.Close()
 	tmpData, err := io.ReadAll(tmpFile)
