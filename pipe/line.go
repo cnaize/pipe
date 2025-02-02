@@ -18,7 +18,7 @@ type LinePipe struct {
 
 func Line(line ...pipes.Pipe) (*LinePipe, error) {
 	if len(line) < 1 {
-		return nil, fmt.Errorf("empty line")
+		return nil, types.ErrEmptyPipeline
 	}
 
 	var prev pipes.Pipe

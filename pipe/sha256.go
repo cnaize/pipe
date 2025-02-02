@@ -45,7 +45,7 @@ func (p *Sha256Pipe) Send(ctx context.Context, in *types.SendIn) (*types.SendOut
 	out.Sha256 = &hash
 
 	if p.expected != nil && hash != *p.expected {
-		return nil, fmt.Errorf("sha256: check hash: invalid hash")
+		return nil, fmt.Errorf("sha256: check hash: %w", types.ErrInvalidHash)
 	}
 
 	return out, nil
