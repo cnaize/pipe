@@ -3,9 +3,9 @@ package pipe
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
-	"slices"
 
 	"github.com/cnaize/pipes/types"
 )
@@ -13,25 +13,25 @@ import (
 type Sha256Pipe struct {
 	*basePipe
 
-	hash []byte
+	expected *string
 }
 
-func Sha256(hash []byte) *Sha256Pipe {
+func Sha256(expected *string) *Sha256Pipe {
 	return &Sha256Pipe{
 		basePipe: newBasePipe(),
-		hash:     hash,
+		expected: expected,
 	}
 }
 
 func (p *Sha256Pipe) Send(ctx context.Context, in *types.SendIn) (*types.SendOut, error) {
 	data := in.Read
 
-	hash := sha256.New()
+	hasher := sha256.New()
 	reader, writer := io.Pipe()
 	go func() {
 		defer writer.Close()
 
-		io.Copy(io.MultiWriter(hash, writer), data)
+		io.Copy(io.MultiWriter(hasher, writer), data)
 	}()
 
 	in.Read = reader
@@ -41,8 +41,10 @@ func (p *Sha256Pipe) Send(ctx context.Context, in *types.SendIn) (*types.SendOut
 		return nil, err
 	}
 
-	out.Sha256 = hash.Sum(nil)
-	if p.hash != nil && !slices.Equal(out.Sha256, p.hash) {
+	hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+	out.Sha256 = &hash
+
+	if p.expected != nil && hash != *p.expected {
 		return nil, fmt.Errorf("sha256: check hash: invalid hash")
 	}
 

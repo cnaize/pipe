@@ -13,7 +13,7 @@ type SendOut struct {
 	DirMakeAll *Dir
 	FileOpen   *File
 	FileCreate *File
-	Sha256     []byte
+	Sha256     *string
 }
 
 type Dir struct {

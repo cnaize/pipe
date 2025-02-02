@@ -36,10 +36,11 @@ func (suite *BaseTestSuite) TestPipe() {
 	)
 	require.NoError(suite.T(), err)
 
+	hash := "kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c="
 	fileLine, err := Line(
 		Timeout(time.Second),
 		FileOpen("testdata/test.txt"),
-		Sha256([]byte{144, 75, 238, 158, 45, 61, 31, 19, 53, 163, 31, 180, 156, 136, 251, 253, 72, 53, 1, 220, 52, 160, 133, 58, 218, 233, 46, 135, 143, 104, 139, 151}),
+		Sha256(&hash),
 		FileCreate("testdata/tmp/test.txt"),
 	)
 	require.NoError(suite.T(), err)
@@ -55,6 +56,7 @@ func (suite *BaseTestSuite) TestPipe() {
 	require.NotNil(suite.T(), out)
 
 	require.NotNil(suite.T(), out.Sha256)
+	require.EqualValues(suite.T(), hash, *out.Sha256)
 	require.EqualValues(suite.T(),
 		&types.File{Path: "testdata/test.txt"},
 		out.FileOpen,
