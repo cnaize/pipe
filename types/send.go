@@ -6,7 +6,7 @@ import (
 )
 
 type SendIn struct {
-	Data io.Reader
+	Read io.Reader
 }
 
 type SendOut struct {

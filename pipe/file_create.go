@@ -32,7 +32,7 @@ func (p *FileCreatePipe) Send(ctx context.Context, in *types.SendIn) (*types.Sen
 	}
 	defer file.Close()
 
-	if _, err := io.Copy(file, in.Data); err != nil {
+	if _, err := io.Copy(file, in.Read); err != nil {
 		return nil, fmt.Errorf("file create: copy: %w", err)
 	}
 

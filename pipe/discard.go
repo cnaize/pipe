@@ -22,7 +22,7 @@ func Discard() *DiscardPipe {
 }
 
 func (p *DiscardPipe) Send(ctx context.Context, in *types.SendIn) (*types.SendOut, error) {
-	if _, err := io.Copy(io.Discard, in.Data); err != nil {
+	if _, err := io.Copy(io.Discard, in.Read); err != nil {
 		return nil, fmt.Errorf("discard: copy: %w", err)
 	}
 

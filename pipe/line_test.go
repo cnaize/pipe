@@ -30,13 +30,23 @@ func (suite *BaseTestSuite) TearDownSuite() {
 }
 
 func (suite *BaseTestSuite) TestPipe() {
-	pipeline, err := Line(
-		Timeout(time.Second),
+	dirLine, err := Line(
 		OsRemoveAll("testdata/tmp"),
 		DirMakeAll("testdata/tmp", os.ModePerm),
+	)
+	require.NoError(suite.T(), err)
+
+	fileLine, err := Line(
+		Timeout(time.Second),
 		FileOpen("testdata/test.txt"),
-		Sha256(),
+		Sha256([]byte{144, 75, 238, 158, 45, 61, 31, 19, 53, 163, 31, 180, 156, 136, 251, 253, 72, 53, 1, 220, 52, 160, 133, 58, 218, 233, 46, 135, 143, 104, 139, 151}),
 		FileCreate("testdata/tmp/test.txt"),
+	)
+	require.NoError(suite.T(), err)
+
+	pipeline, err := Line(
+		dirLine,
+		fileLine,
 	)
 	require.NoError(suite.T(), err)
 

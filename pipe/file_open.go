@@ -31,7 +31,7 @@ func (p *FileOpenPipe) Send(ctx context.Context, in *types.SendIn) (*types.SendO
 	}
 	defer file.Close()
 
-	in.Data = file
+	in.Read = file
 
 	out, err := p.basePipe.Send(ctx, in)
 	if err != nil {
