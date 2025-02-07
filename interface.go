@@ -1,13 +1,13 @@
-package pipes
+package pipe
 
 import (
 	"context"
 
-	"github.com/cnaize/pipes/types"
+	"github.com/cnaize/pipe/types"
 )
 
 type Pipe interface {
-	Send(ctx context.Context, in *types.SendIn) (*types.SendOut, error)
+	Run(ctx context.Context, state *types.State) (*types.State, error)
 
 	GetNext() Pipe
 	GetPrev() Pipe

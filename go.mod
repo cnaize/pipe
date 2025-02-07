@@ -1,4 +1,4 @@
-module github.com/cnaize/pipes
+module github.com/cnaize/pipe
 
 go 1.23
 

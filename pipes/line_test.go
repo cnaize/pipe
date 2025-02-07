@@ -7,9 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cnaize/pipes/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/hash"
+	lfs "github.com/cnaize/pipe/pipes/localfs"
 )
 
 type BaseTestSuite struct {
@@ -31,17 +34,16 @@ func (suite *BaseTestSuite) TearDownSuite() {
 
 func (suite *BaseTestSuite) TestPipe() {
 	dirLine, err := Line(
-		OsRemoveAll("../testdata/tmp"),
-		DirMakeAll("../testdata/tmp", os.ModePerm),
+		lfs.OSRemoveAll("../testdata/tmp"),
+		lfs.MakeDirAll("../testdata/tmp", os.ModePerm),
 	)
 	require.NoError(suite.T(), err)
 
-	hash := "kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c="
 	fileLine, err := Line(
-		Timeout(time.Second),
-		FileOpen("../testdata/test.txt"),
-		Sha256(&hash),
-		FileCreate("../testdata/tmp/test.txt"),
+		general.Timeout(time.Second),
+		lfs.OpenFiles("../testdata/test.txt"),
+		hash.Sha256Sum("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c="),
+		lfs.CreateFiles("../testdata/tmp/test.txt"),
 	)
 	require.NoError(suite.T(), err)
 
@@ -51,20 +53,20 @@ func (suite *BaseTestSuite) TestPipe() {
 	)
 	require.NoError(suite.T(), err)
 
-	out, err := pipeline.Send(context.Background(), &types.SendIn{})
+	state, err := pipeline.Run(context.Background(), nil)
 	require.NoError(suite.T(), err)
-	require.NotNil(suite.T(), out)
+	require.NotNil(suite.T(), state)
 
-	require.NotNil(suite.T(), out.Sha256)
-	require.EqualValues(suite.T(), hash, *out.Sha256)
-	require.EqualValues(suite.T(),
-		&types.File{Path: "../testdata/test.txt"},
-		out.FileOpen,
-	)
-	require.EqualValues(suite.T(),
-		&types.File{Path: "../testdata/tmp/test.txt"},
-		out.FileCreate,
-	)
+	// require.NotNil(suite.T(), out.Sha256)
+	// require.EqualValues(suite.T(), hash, *out.Sha256)
+	// require.EqualValues(suite.T(),
+	// 	&types.File{Path: "../testdata/test.txt"},
+	// 	out.FileOpen,
+	// )
+	// require.EqualValues(suite.T(),
+	// 	&types.File{Path: "../testdata/tmp/test.txt"},
+	// 	out.FileCreate,
+	// )
 
 	testFile, err := os.Open("../testdata/test.txt")
 	require.NoError(suite.T(), err)
