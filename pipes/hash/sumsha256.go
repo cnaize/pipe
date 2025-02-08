@@ -12,26 +12,25 @@ import (
 
 	"github.com/cnaize/pipe"
 	"github.com/cnaize/pipe/pipes/general"
-	pstate "github.com/cnaize/pipe/pipes/state"
 	"github.com/cnaize/pipe/types"
 )
 
-var _ pipe.Pipe = (*Sha256SumPipe)(nil)
+var _ pipe.Pipe = (*SumSha256Pipe)(nil)
 
-type Sha256SumPipe struct {
+type SumSha256Pipe struct {
 	*general.BasePipe
 
 	expected []string
 }
 
-func Sha256Sum(expected ...string) *Sha256SumPipe {
-	return &Sha256SumPipe{
+func SumSha256(expected ...string) *SumSha256Pipe {
+	return &SumSha256Pipe{
 		BasePipe: general.NewBase(),
 		expected: expected,
 	}
 }
 
-func (p *Sha256SumPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *SumSha256Pipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state == nil {
 		state = types.NewState()
 	}
@@ -48,7 +47,7 @@ func (p *Sha256SumPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 			if ok := func() bool {
 				file, err, ok := next()
 				if err != nil {
-					return yield(nil, fmt.Errorf("hash: sha256 sum: next: %w", err))
+					return yield(nil, fmt.Errorf("hash: sum sha256: next: %w", err))
 				}
 				if !ok {
 					return false
@@ -61,17 +60,21 @@ func (p *Sha256SumPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 					defer pipeWriter.Close()
 
 					if _, err := io.Copy(io.MultiWriter(hasher, pipeWriter), data); err != nil {
-						errs = errors.Join(errs, fmt.Errorf("hash: sha256 sum: copy: %w", err))
-					}
-
-					hash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
-					if expected != "" && hash != expected {
 						mu.Lock()
 						defer mu.Unlock()
 
-						errs = errors.Join(errs, fmt.Errorf("hash: sha256 sum: check: %w", types.ErrInvalidHash))
+						errs = errors.Join(errs, fmt.Errorf("hash: sum sha256: copy: %w", err))
+						return
 					}
-					file.Hash = &hash
+
+					file.Hash = base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+					if expected != "" && file.Hash != expected {
+						mu.Lock()
+						defer mu.Unlock()
+
+						errs = errors.Join(errs, fmt.Errorf("hash: sum sha256: check: %w", types.ErrInvalidHash))
+						return
+					}
 				}()
 
 				file.Data = pipeReader
@@ -80,13 +83,6 @@ func (p *Sha256SumPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 			}(); !ok {
 				break
 			}
-		}
-	}
-
-	if p.GetNext() == nil {
-		var err error
-		if state, err = pstate.DiscardFiles().Run(ctx, state); err != nil {
-			return nil, errors.Join(errs, fmt.Errorf("hash: sha256 sum: discard files: %w", err))
 		}
 	}
 

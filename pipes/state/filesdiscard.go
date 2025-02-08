@@ -1,4 +1,4 @@
-package pipe
+package state
 
 import (
 	"context"
@@ -24,15 +24,22 @@ func DiscardFiles() *DiscardFilesPipe {
 
 func (p *DiscardFilesPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state != nil {
-		for file := range state.Files {
-			if !(file != nil && file.Data != nil) {
+		for file, err := range state.Files {
+			if err != nil {
+				return nil, fmt.Errorf("state: discard fiels: %w", err)
+			}
+			if file == nil || file.Data == nil {
 				continue
 			}
 
 			if _, err := io.Copy(io.Discard, file.Data); err != nil {
 				return nil, fmt.Errorf("state: discard files: copy: %w", err)
 			}
+
+			file.Data = nil
 		}
+
+		state.Files = func(yield func(*types.File, error) bool) {}
 	}
 
 	return p.BasePipe.Run(ctx, state)

@@ -11,7 +11,7 @@ type File struct {
 	Perm os.FileMode
 	Data io.Reader
 	Size int64
-	Hash *string
+	Hash string
 }
 
 type State struct {
