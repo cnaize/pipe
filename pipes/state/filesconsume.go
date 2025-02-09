@@ -6,19 +6,19 @@ import (
 	"io"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*ConsumeFilesPipe)(nil)
 
 type ConsumeFilesPipe struct {
-	*general.BasePipe
+	*common.BasePipe
 }
 
 func ConsumeFiles() *ConsumeFilesPipe {
 	return &ConsumeFilesPipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 	}
 }
 

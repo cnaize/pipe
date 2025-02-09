@@ -6,21 +6,21 @@ import (
 	"os"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*OpenFilesPipe)(nil)
 
 type OpenFilesPipe struct {
-	*general.BasePipe
+	*common.BasePipe
 
 	names []string
 }
 
 func OpenFiles(names ...string) *OpenFilesPipe {
 	return &OpenFilesPipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 		names:    names,
 	}
 }

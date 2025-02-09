@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*LinePipe)(nil)
 
 type LinePipe struct {
-	*general.BasePipe
+	*common.BasePipe
 
 	line []pipe.Pipe
 }
@@ -33,7 +33,7 @@ func Line(line ...pipe.Pipe) (*LinePipe, error) {
 	}
 
 	return &LinePipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 		line:     line,
 	}, nil
 }

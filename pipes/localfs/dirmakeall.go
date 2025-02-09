@@ -6,14 +6,14 @@ import (
 	"os"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*MakeDirAllPipe)(nil)
 
 type MakeDirAllPipe struct {
-	*general.BasePipe
+	*common.BasePipe
 
 	path string
 	perm os.FileMode
@@ -21,7 +21,7 @@ type MakeDirAllPipe struct {
 
 func MakeDirAll(path string, perm os.FileMode) *MakeDirAllPipe {
 	return &MakeDirAllPipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 		path:     path,
 		perm:     perm,
 	}

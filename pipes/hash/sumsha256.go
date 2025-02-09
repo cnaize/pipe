@@ -11,21 +11,21 @@ import (
 	"sync"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*SumSha256Pipe)(nil)
 
 type SumSha256Pipe struct {
-	*general.BasePipe
+	*common.BasePipe
 
 	expected []string
 }
 
 func SumSha256(expected ...string) *SumSha256Pipe {
 	return &SumSha256Pipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 		expected: expected,
 	}
 }

@@ -8,21 +8,21 @@ import (
 	"os"
 
 	"github.com/cnaize/pipe"
-	"github.com/cnaize/pipe/pipes/general"
+	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
 var _ pipe.Pipe = (*CreateFilesPipe)(nil)
 
 type CreateFilesPipe struct {
-	*general.BasePipe
+	*common.BasePipe
 
 	names []string
 }
 
 func CreateFiles(names ...string) *CreateFilesPipe {
 	return &CreateFilesPipe{
-		BasePipe: general.NewBase(),
+		BasePipe: common.NewBase(),
 		names:    names,
 	}
 }
