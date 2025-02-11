@@ -1,9 +1,3 @@
-# Pipe repo philosophy: everything is a pipe
-
-### WARNING: very early stage, contributions welcome
-
-## Example:
-```go
 package main
 
 import (
@@ -61,10 +55,3 @@ func main() {
 		fmt.Printf("Result file:\n\tName: %s\n\tSize: %d\n", file.Name, file.Size)
 	}
 }
-```
-### Output:
-```
-Result file:
-	Name: testdata/tmp/test.zip
-	Size: 1047
-```

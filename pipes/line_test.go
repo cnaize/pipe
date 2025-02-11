@@ -2,8 +2,6 @@ package pipes
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
 	"testing"
 	"time"
@@ -11,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/cnaize/pipe/pipes/archive"
 	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/pipes/hash"
 	"github.com/cnaize/pipe/pipes/localfs"
@@ -45,8 +44,9 @@ func (suite *BaseTestSuite) TestPipe() {
 	filesLine, err := Line(
 		common.Timeout(time.Second),
 		localfs.OpenFiles("../testdata/test_0.txt", "../testdata/test_1.txt"),
-		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", ""),
-		localfs.CreateFiles("../testdata/tmp/test_0.txt", "../testdata/tmp/test_1.txt"),
+		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y="),
+		archive.ZipFiles(),
+		localfs.CreateFiles("../testdata/tmp/test.zip"),
 		state.ConsumeFiles(),
 	)
 	require.NoError(suite.T(), err)
@@ -61,46 +61,16 @@ func (suite *BaseTestSuite) TestPipe() {
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), res)
 
-	var i int
 	for file, err := range res.Files {
 		require.NoError(suite.T(), err)
 
-		if i == 0 {
-			require.EqualValues(suite.T(),
-				&types.File{
-					Name: fmt.Sprintf("../testdata/tmp/test_%d.txt", i),
-					Perm: 0644,
-					Size: 502,
-					Hash: "kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=",
-				},
-				file,
-			)
-		} else {
-			require.EqualValues(suite.T(),
-				&types.File{
-					Name: fmt.Sprintf("../testdata/tmp/test_%d.txt", i),
-					Perm: 0644,
-					Size: 946,
-					Hash: "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y=",
-				},
-				file,
-			)
-		}
-
-		testFile, err := os.Open(fmt.Sprintf("../testdata/test_%d.txt", i))
-		require.NoError(suite.T(), err)
-		defer testFile.Close()
-		testData, err := io.ReadAll(testFile)
-		require.NoError(suite.T(), err)
-
-		tmpFile, err := os.Open(fmt.Sprintf("../testdata/tmp/test_%d.txt", i))
-		require.NoError(suite.T(), err)
-		defer tmpFile.Close()
-		tmpData, err := io.ReadAll(tmpFile)
-		require.NoError(suite.T(), err)
-
-		require.EqualValues(suite.T(), testData, tmpData)
-
-		i++
+		require.EqualValues(suite.T(),
+			&types.File{
+				Name: "../testdata/tmp/test.zip",
+				Perm: 0644,
+				Size: 1047,
+			},
+			file,
+		)
 	}
 }
