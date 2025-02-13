@@ -46,6 +46,7 @@ func (suite *BaseTestSuite) TestPipe() {
 		localfs.OpenFiles("../testdata/test_0.txt", "../testdata/test_1.txt"),
 		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y="),
 		archive.ZipFiles(),
+		hash.SumSha256(""),
 		localfs.CreateFiles("../testdata/tmp/test.zip"),
 		state.ConsumeFiles(),
 	)
@@ -69,6 +70,7 @@ func (suite *BaseTestSuite) TestPipe() {
 				Name: "../testdata/tmp/test.zip",
 				Perm: 0644,
 				Size: 1047,
+				Hash: "Yg3OOaBD-miLs7lDIBVAeZMZIXYfy2N25f8-b-1kWOc=",
 			},
 			file,
 		)

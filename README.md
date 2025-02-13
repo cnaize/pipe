@@ -1,6 +1,7 @@
-# Pipe repo philosophy: everything is a pipe
+# Pipe
+## Repo philosophy — everything is a pipe
 
-### WARNING: very early stage, contributions welcome
+### WARNING: very early stage, contibutors are welcome
 
 ## Example:
 ```go
@@ -21,7 +22,7 @@ import (
 )
 
 func main() {
-	// craeate directories pipeline
+	// craeate a directories pipeline
 	dirsLine, _ := pipes.Line(
 		// remove temporary directory
 		localfs.RemoveAll("testdata/tmp"),
@@ -29,7 +30,7 @@ func main() {
 		localfs.MakeDirAll("testdata/tmp", os.ModePerm),
 	)
 
-	// craeate files pipeline
+	// craeate a files pipeline
 	filesLine, _ := pipes.Line(
 		// set execution timeout
 		common.Timeout(time.Second),
@@ -37,28 +38,30 @@ func main() {
 		localfs.OpenFiles("testdata/test_0.txt", "testdata/test_1.txt"),
 		// calculate and compare hash for each file
 		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y="),
-		// zip files
+		// zip the files
 		archive.ZipFiles(),
-		// create new file
+		// calculate hash for the zip archive
+		hash.SumSha256(""),
+		// create a new file
 		localfs.CreateFiles("testdata/tmp/test.zip"),
 		// flow the files through the pipes and keep metadata
 		state.ConsumeFiles(),
 	)
 
-	// create composite pipeline using the pipelines above
+	// create a composite pipeline using the pipelines above
 	pipeline, _ := pipes.Line(
-		// add directories pipeline
+		// add the directories pipeline
 		dirsLine,
-		// add files pipeline
+		// add the files pipeline
 		filesLine,
 	)
 
 	// run the composite pipeline
 	res, _ := pipeline.Run(context.Background(), nil)
 
-	// iterate over result files
+	// iterate over result files and print metadata
 	for file, _ := range res.Files {
-		fmt.Printf("Result file:\n\tName: %s\n\tSize: %d\n", file.Name, file.Size)
+		fmt.Printf("Result file:\n\tName: %s\n\tSize: %d\n\tHash: %s\n", file.Name, file.Size, file.Hash)
 	}
 }
 ```
@@ -67,4 +70,5 @@ func main() {
 Result file:
 	Name: testdata/tmp/test.zip
 	Size: 1047
+	Hash: Yg3OOaBD-miLs7lDIBVAeZMZIXYfy2N25f8-b-1kWOc=
 ```
