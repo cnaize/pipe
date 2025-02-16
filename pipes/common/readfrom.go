@@ -29,15 +29,15 @@ func (p *ReadFromPipe) Run(ctx context.Context, state *types.State) (*types.Stat
 	}
 
 	files := state.Files
-	state.Files = func(yield func(*types.File, error) bool) {
-		for file, err := range files {
-			if !yield(file, err) {
+	state.Files = func(yield func(*types.File) bool) {
+		for file := range files {
+			if !yield(file) {
 				break
 			}
 		}
 
 		for _, reader := range p.readers {
-			if !yield(&types.File{Data: reader}, nil) {
+			if !yield(&types.File{Data: reader}) {
 				break
 			}
 		}

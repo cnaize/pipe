@@ -44,13 +44,10 @@ func (suite *BaseTestSuite) TestFilesPipe() {
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), res)
 
-	for file, err := range res.Files {
-		require.NoError(suite.T(), err)
-
+	for file := range res.Files {
 		require.EqualValues(suite.T(),
 			&types.File{
 				Name: "../testdata/tmp/test.zip",
-				Perm: 0644,
 				Size: 1047,
 				Hash: "Yg3OOaBD-miLs7lDIBVAeZMZIXYfy2N25f8-b-1kWOc=",
 			},

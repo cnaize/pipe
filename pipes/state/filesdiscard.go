@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -25,22 +24,14 @@ func DiscardFiles() *DiscardFilesPipe {
 }
 
 func (p *DiscardFilesPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
-	var mu sync.Mutex
-	var errs error
+	var syncErr types.SyncError
 
 	if state != nil {
 		var wg sync.WaitGroup
-		for file, err := range state.Files {
-			func() {
-				if err != nil {
-					mu.Lock()
-					defer mu.Unlock()
-
-					errs = errors.Join(errs, fmt.Errorf("state: consume files: next: %w", err))
-					return
-				}
+		for file := range state.Files {
+			err := func() error {
 				if file == nil || file.Data == nil {
-					return
+					return nil
 				}
 
 				fileData := file.Data
@@ -51,21 +42,21 @@ func (p *DiscardFilesPipe) Run(ctx context.Context, state *types.State) (*types.
 					defer wg.Done()
 
 					if _, err := io.Copy(io.Discard, fileData); err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("state: consume files: copy: %w", err))
+						syncErr.Join(fmt.Errorf("state: consume files: copy: %w", err))
 						return
 					}
 				}()
+
+				return nil
 			}()
+			syncErr.Join(err)
 		}
 
-		state.Files = func(yield func(*types.File, error) bool) {}
+		state.Files = func(yield func(*types.File) bool) {}
 
 		wg.Wait()
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)
-	return state, errors.Join(errs, err)
+	return state, syncErr.Join(err)
 }

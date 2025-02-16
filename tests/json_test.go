@@ -47,8 +47,7 @@ func (suite *BaseTestSuite) TestJsonPipe() {
 	require.NoError(suite.T(), err)
 
 	var i int
-	for file, err := range res.Files {
-		require.NoError(suite.T(), err)
+	for file := range res.Files {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {

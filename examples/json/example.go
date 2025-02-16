@@ -19,7 +19,8 @@ func main() {
 		"enabled": true
 	}`)
 	jsonData1 := bytes.NewBufferString(`{
-		"name": "json1"
+		"name": "json1",
+		"enabled": true
 	}`)
 
 	// create json modify function
@@ -42,9 +43,9 @@ func main() {
 		common.Timeout(time.Second),
 		// pass the example jsons
 		common.ReadFrom(jsonData0, jsonData1),
-		// pass the json modify function
+		// pass json modify functions
 		json.Modify(modifyFn, json.NopModifyFn),
-		// pass the output buffers to write to them
+		// pass the output buffers
 		common.WriteTo(outData0, outData1),
 		// flow the jsons through the pipes and keep metadata
 		state.ConsumeFiles(),

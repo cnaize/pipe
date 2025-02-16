@@ -2,7 +2,6 @@ package localfs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -34,23 +33,19 @@ func (p *CreateFilesPipe) Run(ctx context.Context, state *types.State) (*types.S
 		state = types.NewState()
 	}
 
-	var mu sync.Mutex
-	var errs error
+	var syncErr types.SyncError
 
 	files := state.Files
-	state.Files = func(yield func(*types.File, error) bool) {
-		next, stop := iter.Pull2(files)
+	state.Files = func(yield func(*types.File) bool) {
+		next, stop := iter.Pull(files)
 		defer stop()
 
 		var wg sync.WaitGroup
 		for _, name := range p.names {
-			if ok := func() bool {
-				file, err, ok := next()
-				if err != nil {
-					return yield(nil, fmt.Errorf("localfs: create files: next: %w", err))
-				}
+			ok, err := func() (bool, error) {
+				file, ok := next()
 				if !ok {
-					return false
+					return false, nil
 				}
 
 				fileData := file.Data
@@ -62,38 +57,30 @@ func (p *CreateFilesPipe) Run(ctx context.Context, state *types.State) (*types.S
 
 					newFile, err := os.Create(name)
 					if err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("localfs: create files: create: %w", err))
+						syncErr.Join(fmt.Errorf("localfs: create files: create: %w", err))
 						return
 					}
 					defer newFile.Close()
 
 					if _, err := io.Copy(newFile, fileData); err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("localfs: create files: copy: %w", err))
+						syncErr.Join(fmt.Errorf("localfs: create files: copy: %w", err))
 						return
 					}
 
 					stat, err := newFile.Stat()
 					if err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("localfs: create files: stat: %w", err))
+						syncErr.Join(fmt.Errorf("localfs: create files: stat: %w", err))
 						return
 					}
 
 					file.Name = newFile.Name()
-					file.Perm = stat.Mode()
 					file.Size = stat.Size()
 				}()
 
-				return yield(file, nil)
-			}(); !ok {
+				return yield(file), nil
+			}()
+			syncErr.Join(err)
+			if !ok {
 				break
 			}
 		}
@@ -102,5 +89,5 @@ func (p *CreateFilesPipe) Run(ctx context.Context, state *types.State) (*types.S
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)
-	return state, errors.Join(errs, err)
+	return state, syncErr.Join(err)
 }

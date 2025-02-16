@@ -3,7 +3,6 @@ package json
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -38,23 +37,19 @@ func (p *ModifyPipe) Run(ctx context.Context, state *types.State) (*types.State,
 		state = types.NewState()
 	}
 
-	var mu sync.Mutex
-	var errs error
+	var syncErr types.SyncError
 
 	files := state.Files
-	state.Files = func(yield func(*types.File, error) bool) {
-		next, stop := iter.Pull2(files)
+	state.Files = func(yield func(*types.File) bool) {
+		next, stop := iter.Pull(files)
 		defer stop()
 
 		var wg sync.WaitGroup
 		for _, modifier := range p.modifiers {
-			if ok := func() bool {
-				file, err, ok := next()
-				if err != nil {
-					return yield(nil, fmt.Errorf("json: modify: next: %w", err))
-				}
+			ok, err := func() (bool, error) {
+				file, ok := next()
 				if !ok {
-					return false
+					return false, nil
 				}
 
 				pipeReader, pipeWriter := io.Pipe()
@@ -69,32 +64,25 @@ func (p *ModifyPipe) Run(ctx context.Context, state *types.State) (*types.State,
 
 					var jsonData map[string]any
 					if err := json.NewDecoder(fileData).Decode(&jsonData); err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("json: modify: unmarshal: %w", err))
+						syncErr.Join(fmt.Errorf("json: modify: unmarshal: %w", err))
 						return
 					}
 
 					if err := modifier(jsonData); err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("json: modify: modifier: %w", err))
+						syncErr.Join(fmt.Errorf("json: modify: modifier: %w", err))
 						return
 					}
 
 					if err := json.NewEncoder(pipeWriter).Encode(&jsonData); err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("json: modify: marshal: %w", err))
+						syncErr.Join(fmt.Errorf("json: modify: marshal: %w", err))
 						return
 					}
 				}()
 
-				return yield(file, nil)
-			}(); !ok {
+				return yield(file), nil
+			}()
+			syncErr.Join(err)
+			if !ok {
 				break
 			}
 		}
@@ -103,5 +91,5 @@ func (p *ModifyPipe) Run(ctx context.Context, state *types.State) (*types.State,
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)
-	return state, errors.Join(errs, err)
+	return state, syncErr.Join(err)
 }

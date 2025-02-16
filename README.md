@@ -60,7 +60,7 @@ func main() {
 	res, _ := pipeline.Run(context.Background(), nil)
 
 	// iterate over result files and print metadata
-	for file, _ := range res.Files {
+	for file := range res.Files {
 		fmt.Printf("Result file:\n\tName: %s\n\tSize: %d\n\tHash: %s\n", file.Name, file.Size, file.Hash)
 	}
 }

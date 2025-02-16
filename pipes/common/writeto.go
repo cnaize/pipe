@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -32,23 +31,19 @@ func (p *WriteToPipe) Run(ctx context.Context, state *types.State) (*types.State
 		state = types.NewState()
 	}
 
-	var mu sync.Mutex
-	var errs error
+	var syncErr types.SyncError
 
 	files := state.Files
-	state.Files = func(yield func(*types.File, error) bool) {
-		next, stop := iter.Pull2(files)
+	state.Files = func(yield func(*types.File) bool) {
+		next, stop := iter.Pull(files)
 		defer stop()
 
 		var wg sync.WaitGroup
 		for _, writer := range p.writers {
-			if ok := func() bool {
-				file, err, ok := next()
-				if err != nil {
-					return yield(nil, fmt.Errorf("common: write to: next: %w", err))
-				}
+			ok, err := func() (bool, error) {
+				file, ok := next()
 				if !ok {
-					return false
+					return false, nil
 				}
 
 				fileData := file.Data
@@ -60,18 +55,17 @@ func (p *WriteToPipe) Run(ctx context.Context, state *types.State) (*types.State
 
 					n, err := io.Copy(writer, fileData)
 					if err != nil {
-						mu.Lock()
-						defer mu.Unlock()
-
-						errs = errors.Join(errs, fmt.Errorf("localfs: create files: copy: %w", err))
+						syncErr.Join(fmt.Errorf("localfs: create files: copy: %w", err))
 						return
 					}
 
 					file.Size = n
 				}()
 
-				return yield(file, nil)
-			}(); !ok {
+				return yield(file), nil
+			}()
+			syncErr.Join(err)
+			if !ok {
 				break
 			}
 		}
@@ -80,5 +74,5 @@ func (p *WriteToPipe) Run(ctx context.Context, state *types.State) (*types.State
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)
-	return state, errors.Join(errs, err)
+	return state, syncErr.Join(err)
 }

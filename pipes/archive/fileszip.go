@@ -3,7 +3,6 @@ package archive
 import (
 	"archive/zip"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -30,10 +29,10 @@ func (p *ZipFilesPipe) Run(ctx context.Context, state *types.State) (*types.Stat
 		state = types.NewState()
 	}
 
-	var errs error
+	var syncErr types.SyncError
 
 	files := state.Files
-	state.Files = func(yield func(*types.File, error) bool) {
+	state.Files = func(yield func(*types.File) bool) {
 		pipeReader, pipeWriter := io.Pipe()
 		go func() {
 			defer pipeWriter.Close()
@@ -41,33 +40,29 @@ func (p *ZipFilesPipe) Run(ctx context.Context, state *types.State) (*types.Stat
 			zipWriter := zip.NewWriter(pipeWriter)
 			defer zipWriter.Close()
 
-			for file, err := range files {
-				if err != nil {
-					errs = errors.Join(errs, fmt.Errorf("archive: zip files: next: %w", err))
-					return
-				}
+			for file := range files {
+				err := func() error {
+					fileData := file.Data
+					file.Data = nil
 
-				fileData := file.Data
-				file.Data = nil
+					zipFile, err := zipWriter.Create(filepath.Base(file.Name))
+					if err != nil {
+						return fmt.Errorf("archive: zip files: create: %w", err)
+					}
 
-				zipFile, err := zipWriter.Create(filepath.Base(file.Name))
-				if err != nil {
-					errs = errors.Join(errs, fmt.Errorf("archive: zip files: create: %w", err))
-					return
-				}
+					if _, err := io.Copy(zipFile, fileData); err != nil {
+						return fmt.Errorf("archive: zip files: copy: %w", err)
+					}
 
-				if _, err := io.Copy(zipFile, fileData); err != nil {
-					errs = errors.Join(errs, fmt.Errorf("archive: zip files: copy: %w", err))
-					return
-				}
+					return nil
+				}()
+				syncErr.Join(err)
 			}
 		}()
 
-		yield(&types.File{
-			Data: pipeReader,
-		}, nil)
+		yield(&types.File{Data: pipeReader})
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)
-	return state, errors.Join(errs, err)
+	return state, syncErr.Join(err)
 }
