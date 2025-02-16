@@ -29,7 +29,7 @@ func MakeDirAll(path string, perm os.FileMode) *MakeDirAllPipe {
 
 func (p *MakeDirAllPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if err := os.MkdirAll(p.path, p.perm); err != nil {
-		return nil, fmt.Errorf("lfs: make dir all: mkdir all: %w", err)
+		return nil, fmt.Errorf("localfs: make dir all: mkdir all: %w", err)
 	}
 
 	return p.BasePipe.Run(ctx, state)

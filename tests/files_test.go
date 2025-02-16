@@ -1,14 +1,13 @@
-package pipes
+package tests
 
 import (
 	"context"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 
+	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/archive"
 	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/pipes/hash"
@@ -17,31 +16,14 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type BaseTestSuite struct {
-	suite.Suite
-}
-
-func TestBaseTestSuite(t *testing.T) {
-	suite.Run(t, new(BaseTestSuite))
-}
-
-func (suite *BaseTestSuite) SetupSuite() {
-
-}
-
-func (suite *BaseTestSuite) TearDownSuite() {
-	err := os.RemoveAll("../testdata/tmp")
-	require.NoError(suite.T(), err)
-}
-
-func (suite *BaseTestSuite) TestPipe() {
-	dirsLine, err := Line(
+func (suite *BaseTestSuite) TestFilesPipe() {
+	dirsLine, err := pipes.Line(
 		localfs.RemoveAll("../testdata/tmp"),
 		localfs.MakeDirAll("../testdata/tmp", os.ModePerm),
 	)
 	require.NoError(suite.T(), err)
 
-	filesLine, err := Line(
+	filesLine, err := pipes.Line(
 		common.Timeout(time.Second),
 		localfs.OpenFiles("../testdata/test_0.txt", "../testdata/test_1.txt"),
 		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y="),
@@ -52,7 +34,7 @@ func (suite *BaseTestSuite) TestPipe() {
 	)
 	require.NoError(suite.T(), err)
 
-	pipeline, err := Line(
+	pipeline, err := pipes.Line(
 		dirsLine,
 		filesLine,
 	)

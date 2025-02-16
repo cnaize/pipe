@@ -47,13 +47,16 @@ func (p *ZipFilesPipe) Run(ctx context.Context, state *types.State) (*types.Stat
 					return
 				}
 
+				fileData := file.Data
+				file.Data = nil
+
 				zipFile, err := zipWriter.Create(filepath.Base(file.Name))
 				if err != nil {
 					errs = errors.Join(errs, fmt.Errorf("archive: zip files: create: %w", err))
 					return
 				}
 
-				if _, err := io.Copy(zipFile, file.Data); err != nil {
+				if _, err := io.Copy(zipFile, fileData); err != nil {
 					errs = errors.Join(errs, fmt.Errorf("archive: zip files: copy: %w", err))
 					return
 				}

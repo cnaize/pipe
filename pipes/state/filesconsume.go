@@ -2,8 +2,10 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/cnaize/pipe"
 	"github.com/cnaize/pipe/pipes/common"
@@ -23,33 +25,56 @@ func ConsumeFiles() *ConsumeFilesPipe {
 }
 
 func (p *ConsumeFilesPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+	var mu sync.Mutex
+	var errs error
+
 	if state != nil {
+		var wg sync.WaitGroup
 		var files []*types.File
 		for file, err := range state.Files {
 			files = append(files, file)
 
-			if err != nil {
-				return nil, fmt.Errorf("state: consume files: %w", err)
-			}
-			if file == nil || file.Data == nil {
-				continue
-			}
+			func() {
+				if err != nil {
+					mu.Lock()
+					defer mu.Unlock()
 
-			if _, err := io.Copy(io.Discard, file.Data); err != nil {
-				return nil, fmt.Errorf("state: consume files: copy: %w", err)
-			}
+					errs = errors.Join(errs, fmt.Errorf("state: consume files: next: %w", err))
+					return
+				}
+				if file == nil || file.Data == nil {
+					return
+				}
 
-			file.Data = nil
+				fileData := file.Data
+				file.Data = nil
+
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+
+					if _, err := io.Copy(io.Discard, fileData); err != nil {
+						mu.Lock()
+						defer mu.Unlock()
+
+						errs = errors.Join(errs, fmt.Errorf("state: consume files: copy: %w", err))
+						return
+					}
+				}()
+			}()
 		}
 
 		state.Files = func(yield func(*types.File, error) bool) {
 			for _, file := range files {
 				if !yield(file, nil) {
-					return
+					break
 				}
 			}
 		}
+
+		wg.Wait()
 	}
 
-	return p.BasePipe.Run(ctx, state)
+	state, err := p.BasePipe.Run(ctx, state)
+	return state, errors.Join(errs, err)
 }

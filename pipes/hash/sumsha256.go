@@ -53,13 +53,16 @@ func (p *SumSha256Pipe) Run(ctx context.Context, state *types.State) (*types.Sta
 					return false
 				}
 
-				data := file.Data
 				hasher := sha256.New()
 				pipeReader, pipeWriter := io.Pipe()
+
+				fileData := file.Data
+				file.Data = pipeReader
+
 				go func() {
 					defer pipeWriter.Close()
 
-					if _, err := io.Copy(io.MultiWriter(hasher, pipeWriter), data); err != nil {
+					if _, err := io.Copy(io.MultiWriter(hasher, pipeWriter), fileData); err != nil {
 						mu.Lock()
 						defer mu.Unlock()
 
@@ -76,8 +79,6 @@ func (p *SumSha256Pipe) Run(ctx context.Context, state *types.State) (*types.Sta
 						return
 					}
 				}()
-
-				file.Data = pipeReader
 
 				return yield(file, nil)
 			}(); !ok {

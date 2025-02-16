@@ -32,25 +32,23 @@ func (p *OpenFilesPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 
 	files := state.Files
 	state.Files = func(yield func(*types.File, error) bool) {
-		// get files
 		for file, err := range files {
 			if !yield(file, err) {
 				break
 			}
 		}
 
-		// add files
 		for _, name := range p.names {
 			if ok := func() bool {
 				file, err := os.Open(name)
 				if err != nil {
-					return yield(nil, fmt.Errorf("lfs: open files: open: %w", err))
+					return yield(nil, fmt.Errorf("localfs: open files: open: %w", err))
 				}
 				defer file.Close()
 
 				stat, err := file.Stat()
 				if err != nil {
-					return yield(nil, fmt.Errorf("lfs: open files: stat: %w", err))
+					return yield(nil, fmt.Errorf("localfs: open files: stat: %w", err))
 				}
 
 				return yield(&types.File{
