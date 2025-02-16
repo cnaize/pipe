@@ -16,6 +16,9 @@ type SyncError struct {
 }
 
 func (e *SyncError) Join(err error) error {
+	e.Lock()
+	defer e.Unlock()
+
 	e.error = errors.Join(e.error, err)
 	return e.error
 }
