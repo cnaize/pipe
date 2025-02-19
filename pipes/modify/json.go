@@ -1,4 +1,4 @@
-package json
+package modify
 
 import (
 	"context"
@@ -13,26 +13,22 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type ModifyFn func(data map[string]any) error
+var _ pipe.Pipe = (*JsonsPipe)(nil)
 
-var NopModifyFn = func(data map[string]any) error { return nil }
-
-var _ pipe.Pipe = (*ModifyPipe)(nil)
-
-type ModifyPipe struct {
+type JsonsPipe struct {
 	*common.BasePipe
 
 	modifiers []ModifyFn
 }
 
-func Modify(modifiers ...ModifyFn) *ModifyPipe {
-	return &ModifyPipe{
+func Jsons(modifiers ...ModifyFn) *JsonsPipe {
+	return &JsonsPipe{
 		BasePipe:  common.NewBase(),
 		modifiers: modifiers,
 	}
 }
 
-func (p *ModifyPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *JsonsPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state == nil {
 		state = types.NewState()
 	}

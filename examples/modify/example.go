@@ -8,7 +8,7 @@ import (
 
 	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/common"
-	"github.com/cnaize/pipe/pipes/json"
+	"github.com/cnaize/pipe/pipes/modify"
 	"github.com/cnaize/pipe/pipes/state"
 )
 
@@ -20,7 +20,7 @@ func main() {
 	}`)
 	jsonData1 := bytes.NewBufferString(`{
 		"name": "json1",
-		"enabled": true
+		"count": 10
 	}`)
 
 	// create json modify function
@@ -44,7 +44,7 @@ func main() {
 		// pass the example jsons
 		common.ReadFrom(jsonData0, jsonData1),
 		// pass json modify functions
-		json.Modify(modifyFn, json.NopModifyFn),
+		modify.Jsons(modifyFn, modifyFn),
 		// pass the output buffers
 		common.WriteTo(outData0, outData1),
 		// flow the jsons through the pipes and keep metadata

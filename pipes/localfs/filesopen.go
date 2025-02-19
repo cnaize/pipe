@@ -3,6 +3,7 @@ package localfs
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/cnaize/pipe"
@@ -30,6 +31,13 @@ func (p *OpenFilesPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 		state = types.NewState()
 	}
 
+	var toClose []io.Closer
+	defer func() {
+		for _, closer := range toClose {
+			closer.Close()
+		}
+	}()
+
 	var syncErr types.SyncError
 
 	files := state.Files
@@ -41,26 +49,24 @@ func (p *OpenFilesPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 		}
 
 		for _, name := range p.names {
-			ok, err := func() (bool, error) {
-				file, err := os.Open(name)
-				if err != nil {
-					return false, fmt.Errorf("localfs: open files: open: %w", err)
-				}
-				defer file.Close()
+			file, err := os.Open(name)
+			if err != nil {
+				syncErr.Join(fmt.Errorf("localfs: open files: open: %w", err))
+				continue
+			}
+			toClose = append(toClose, file)
 
-				stat, err := file.Stat()
-				if err != nil {
-					return false, fmt.Errorf("localfs: open files: stat: %w", err)
-				}
+			stat, err := file.Stat()
+			if err != nil {
+				syncErr.Join(fmt.Errorf("localfs: open files: stat: %w", err))
+				continue
+			}
 
-				return yield(&types.File{
-					Name: file.Name(),
-					Data: file,
-					Size: stat.Size(),
-				}), nil
-			}()
-			syncErr.Join(err)
-			if !ok {
+			if !yield(&types.File{
+				Name: file.Name(),
+				Data: file,
+				Size: stat.Size(),
+			}) {
 				break
 			}
 		}
