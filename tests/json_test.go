@@ -39,7 +39,7 @@ func (suite *BaseTestSuite) TestJsonPipe() {
 		common.ReadFrom(jsonData0, jsonData1),
 		modify.Jsons(modifyFn, modifyFn),
 		common.WriteTo(outData0, outData1),
-		state.ConsumeFiles(),
+		state.Consume(),
 	)
 	require.NoError(suite.T(), err)
 

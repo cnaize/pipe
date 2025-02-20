@@ -11,28 +11,24 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-var _ pipe.Pipe = (*ConsumeFilesPipe)(nil)
+var _ pipe.Pipe = (*DiscardPipe)(nil)
 
-type ConsumeFilesPipe struct {
+type DiscardPipe struct {
 	*common.BasePipe
 }
 
-func ConsumeFiles() *ConsumeFilesPipe {
-	return &ConsumeFilesPipe{
+func Discard() *DiscardPipe {
+	return &DiscardPipe{
 		BasePipe: common.NewBase(),
 	}
 }
 
-func (p *ConsumeFilesPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *DiscardPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	var syncErr types.SyncError
 
 	if state != nil {
 		var wg sync.WaitGroup
-
-		var files []*types.File
 		for file := range state.Files {
-			files = append(files, file)
-
 			err := func() error {
 				if file == nil || file.Data == nil {
 					return nil
@@ -46,7 +42,7 @@ func (p *ConsumeFilesPipe) Run(ctx context.Context, state *types.State) (*types.
 					defer wg.Done()
 
 					if _, err := io.Copy(io.Discard, fileData); err != nil {
-						syncErr.Join(fmt.Errorf("state: consume files: copy: %w", err))
+						syncErr.Join(fmt.Errorf("state: discard: copy: %w", err))
 						return
 					}
 				}()
@@ -56,13 +52,7 @@ func (p *ConsumeFilesPipe) Run(ctx context.Context, state *types.State) (*types.
 			syncErr.Join(err)
 		}
 
-		state.Files = func(yield func(*types.File) bool) {
-			for _, file := range files {
-				if !yield(file) {
-					break
-				}
-			}
-		}
+		state.Files = func(yield func(*types.File) bool) {}
 
 		wg.Wait()
 	}

@@ -30,7 +30,7 @@ func (suite *BaseTestSuite) TestFilesPipe() {
 		archive.ZipFiles(),
 		hash.SumSha256(""),
 		localfs.CreateFiles("../testdata/tmp/test.zip"),
-		state.ConsumeFiles(),
+		state.Consume(),
 	)
 	require.NoError(suite.T(), err)
 

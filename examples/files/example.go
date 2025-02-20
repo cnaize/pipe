@@ -38,7 +38,7 @@ func main() {
 		// create a new file
 		localfs.CreateFiles("testdata/tmp/test.zip"),
 		// flow the files through the pipes and keep metadata
-		state.ConsumeFiles(),
+		state.Consume(),
 	)
 
 	// create a composite pipeline using the pipelines above

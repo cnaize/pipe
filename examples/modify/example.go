@@ -48,7 +48,7 @@ func main() {
 		// pass the output buffers
 		common.WriteTo(outData0, outData1),
 		// flow the jsons through the pipes and keep metadata
-		state.ConsumeFiles(),
+		state.Consume(),
 	)
 
 	// run the pipeline
