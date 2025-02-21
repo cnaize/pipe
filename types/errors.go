@@ -6,8 +6,7 @@ import (
 )
 
 var (
-	ErrInvalidHash   = errors.New("invalid hash")
-	ErrEmptyPipeline = errors.New("empty pipeline")
+	ErrInvalidHash = errors.New("invalid hash")
 )
 
 type SyncError struct {

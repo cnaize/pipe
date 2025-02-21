@@ -17,11 +17,7 @@ type LinePipe struct {
 	line []pipe.Pipe
 }
 
-func Line(line ...pipe.Pipe) (*LinePipe, error) {
-	if len(line) < 1 {
-		return nil, types.ErrEmptyPipeline
-	}
-
+func Line(line ...pipe.Pipe) *LinePipe {
 	var prev pipe.Pipe
 	for _, p := range line {
 		p.SetPrev(prev)
@@ -35,13 +31,16 @@ func Line(line ...pipe.Pipe) (*LinePipe, error) {
 	return &LinePipe{
 		BasePipe: common.NewBase(),
 		line:     line,
-	}, nil
+	}
 }
 
 func (p *LinePipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
-	state, err := p.line[0].Run(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("line: run: %w", err)
+	if len(p.line) > 0 {
+		var err error
+		state, err = p.line[0].Run(ctx, state)
+		if err != nil {
+			return nil, fmt.Errorf("line: run: %w", err)
+		}
 	}
 
 	return p.BasePipe.Run(ctx, state)

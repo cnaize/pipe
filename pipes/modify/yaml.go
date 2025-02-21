@@ -2,35 +2,36 @@ package modify
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"iter"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/cnaize/pipe"
 	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/types"
 )
 
-type JsonFn func(data map[string]any) error
+type YamlFn func(data map[any]any) error
 
-var _ pipe.Pipe = (*JsonsPipe)(nil)
+var _ pipe.Pipe = (*YamlsPipe)(nil)
 
-type JsonsPipe struct {
+type YamlsPipe struct {
 	*common.BasePipe
 
-	modifiers []JsonFn
+	modifiers []YamlFn
 }
 
-func Jsons(modifiers ...JsonFn) *JsonsPipe {
-	return &JsonsPipe{
+func Yamls(modifiers ...YamlFn) *YamlsPipe {
+	return &YamlsPipe{
 		BasePipe:  common.NewBase(),
 		modifiers: modifiers,
 	}
 }
 
-func (p *JsonsPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *YamlsPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state == nil {
 		state = types.NewState()
 	}
@@ -60,19 +61,19 @@ func (p *JsonsPipe) Run(ctx context.Context, state *types.State) (*types.State, 
 					defer wg.Done()
 					defer pipeWriter.Close()
 
-					var jsonData map[string]any
-					if err := json.NewDecoder(fileData).Decode(&jsonData); err != nil {
-						syncErr.Join(fmt.Errorf("json: modify: unmarshal: %w", err))
+					var yamlData map[any]any
+					if err := yaml.NewDecoder(fileData).Decode(&yamlData); err != nil {
+						syncErr.Join(fmt.Errorf("yaml: modify: unmarshal: %w", err))
 						return
 					}
 
-					if err := modifier(jsonData); err != nil {
-						syncErr.Join(fmt.Errorf("json: modify: modifier: %w", err))
+					if err := modifier(yamlData); err != nil {
+						syncErr.Join(fmt.Errorf("yaml: modify: modifier: %w", err))
 						return
 					}
 
-					if err := json.NewEncoder(pipeWriter).Encode(&jsonData); err != nil {
-						syncErr.Join(fmt.Errorf("json: modify: marshal: %w", err))
+					if err := yaml.NewEncoder(pipeWriter).Encode(&yamlData); err != nil {
+						syncErr.Join(fmt.Errorf("yaml: modify: marshal: %w", err))
 						return
 					}
 				}()

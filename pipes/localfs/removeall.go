@@ -27,7 +27,7 @@ func RemoveAll(path string) *RemoveAllPipe {
 
 func (p *RemoveAllPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if err := os.RemoveAll(p.path); err != nil {
-		return nil, fmt.Errorf("localfs: os remove all: remove all: %w", err)
+		return nil, fmt.Errorf("localfs: remove all: remove all: %w", err)
 	}
 
 	return p.BasePipe.Run(ctx, state)

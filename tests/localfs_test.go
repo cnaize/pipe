@@ -17,13 +17,12 @@ import (
 )
 
 func (suite *BaseTestSuite) TestFilesPipe() {
-	dirsLine, err := pipes.Line(
+	dirsLine := pipes.Line(
 		localfs.RemoveAll("../testdata/tmp"),
 		localfs.MakeDirAll("../testdata/tmp", os.ModePerm),
 	)
-	require.NoError(suite.T(), err)
 
-	filesLine, err := pipes.Line(
+	filesLine := pipes.Line(
 		common.Timeout(time.Second),
 		localfs.OpenFiles("../testdata/test_0.txt", "../testdata/test_1.txt"),
 		hash.SumSha256("kEvuni09HxM1ox-0nIj7_Ug1Adw0oIU62ukuh49oi5c=", "CeE_WA_xKsx2Dj_sRvowaCeDfQOPviSpyjaZdxuCT4Y="),
@@ -32,13 +31,11 @@ func (suite *BaseTestSuite) TestFilesPipe() {
 		localfs.CreateFiles("../testdata/tmp/test.zip"),
 		state.Consume(),
 	)
-	require.NoError(suite.T(), err)
 
-	pipeline, err := pipes.Line(
+	pipeline := pipes.Line(
 		dirsLine,
 		filesLine,
 	)
-	require.NoError(suite.T(), err)
 
 	res, err := pipeline.Run(context.Background(), nil)
 	require.NoError(suite.T(), err)

@@ -53,13 +53,13 @@ func (p *WriteToPipe) Run(ctx context.Context, state *types.State) (*types.State
 				go func() {
 					defer wg.Done()
 
-					n, err := io.Copy(writer, fileData)
+					size, err := io.Copy(writer, fileData)
 					if err != nil {
-						syncErr.Join(fmt.Errorf("localfs: create files: copy: %w", err))
+						syncErr.Join(fmt.Errorf("common: write to: copy: %w", err))
 						return
 					}
 
-					file.Size = n
+					file.Size = size
 				}()
 
 				return yield(file), nil

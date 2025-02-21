@@ -1,19 +1,18 @@
-package main
+package tests
 
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/pipes/modify"
 	"github.com/cnaize/pipe/pipes/state"
+	"github.com/stretchr/testify/require"
 )
 
-func main() {
-	// create two example jsons
+func (suite *BaseTestSuite) TestModifyPipe() {
 	inData0 := bytes.NewBufferString(`{
 		"name": "json_0",
 		"enabled": true
@@ -23,27 +22,19 @@ func main() {
 		"count": 10
 	}`)
 
-	// create read pipeline
 	readLine := pipes.Line(
-		// set execution timeout
 		common.Timeout(time.Second),
-		// pass the example inputs
 		common.ReadFrom(inData0, inData1),
 	)
 
-	// create output buffers
 	outData0 := bytes.NewBuffer(nil)
 	outData1 := bytes.NewBuffer(nil)
 
-	// craeate a write pipeline
 	writeLine := pipes.Line(
-		// pass the output buffers
 		common.WriteTo(outData0, outData1),
-		// flow the jsons through the pipes and keep metadata
 		state.Consume(),
 	)
 
-	// create json modify function
 	jsonModifyFn := func(data map[string]any) error {
 		if enabled, ok := data["enabled"]; ok {
 			enabled := enabled.(bool)
@@ -53,35 +44,38 @@ func main() {
 		return nil
 	}
 
-	// craeate json pipeline
 	jsonLine := pipes.Line(
-		// pass the read pipeline
 		readLine,
-		// pass the json modify function
 		modify.Jsons(jsonModifyFn, jsonModifyFn),
-		// pass the write pipeline
 		writeLine,
 	)
 
-	// run the json pipeline
-	_, _ = jsonLine.Run(context.Background(), nil)
+	res, err := jsonLine.Run(context.Background(), nil)
+	require.NoError(suite.T(), err)
 
-	// print the output buffers data
-	fmt.Printf("=== Json ===\n\n")
-	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
-	fmt.Printf("--> Redult data 1:\n%s\n", outData1.String())
+	var i int
+	for file := range res.Files {
+		require.NotEmpty(suite.T(), file.Size)
 
-	// reset the buffers
+		if i == 0 {
+			require.Equal(suite.T(), int64(34), file.Size)
+			require.EqualValues(suite.T(), `{"enabled":false,"name":"json_0"}`+string('\n'), outData0.String())
+		} else {
+			require.Equal(suite.T(), int64(29), file.Size)
+			require.EqualValues(suite.T(), `{"count":10,"name":"json_1"}`+string('\n'), outData1.String())
+		}
+
+		i++
+	}
+
 	inData0.Reset()
 	inData1.Reset()
 	outData0.Reset()
 	outData1.Reset()
 
-	// create two example yamls
 	inData0.WriteString("name: yaml_0\nenabled: true")
 	inData1.WriteString("name: yaml_1\ncount: 10")
 
-	// create yaml modify function
 	yamlModifyFn := func(data map[any]any) error {
 		if enabled, ok := data["enabled"]; ok {
 			enabled := enabled.(bool)
@@ -91,21 +85,27 @@ func main() {
 		return nil
 	}
 
-	// craeate yaml pipeline
 	yamlLine := pipes.Line(
-		// pass the read pipeline
 		readLine,
-		// pass the json modify function
 		modify.Yamls(yamlModifyFn, yamlModifyFn),
-		// pass the write pipeline
 		writeLine,
 	)
 
-	// run the yaml pipeline
-	_, _ = yamlLine.Run(context.Background(), nil)
+	res, err = yamlLine.Run(context.Background(), nil)
+	require.NoError(suite.T(), err)
 
-	// print the output buffers data
-	fmt.Printf("=== Yaml ===\n\n")
-	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
-	fmt.Printf("--> Redult data 1:\n%s\n", outData1.String())
+	i = 0
+	for file := range res.Files {
+		require.NotEmpty(suite.T(), file.Size)
+
+		if i == 0 {
+			require.Equal(suite.T(), int64(28), file.Size)
+			require.EqualValues(suite.T(), "enabled: false\nname: yaml_0"+string('\n'), outData0.String())
+		} else {
+			require.Equal(suite.T(), int64(23), file.Size)
+			require.EqualValues(suite.T(), "count: 10\nname: yaml_1"+string('\n'), outData1.String())
+		}
+
+		i++
+	}
 }
