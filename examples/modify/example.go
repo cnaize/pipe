@@ -35,7 +35,7 @@ func main() {
 	outData0 := bytes.NewBuffer(nil)
 	outData1 := bytes.NewBuffer(nil)
 
-	// craeate a write pipeline
+	// create write pipeline
 	writeLine := pipes.Line(
 		// pass the output buffers
 		common.WriteTo(outData0, outData1),
