@@ -37,6 +37,7 @@ func Line(line ...pipe.Pipe) *LinePipe {
 func (p *LinePipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if len(p.line) > 0 {
 		var err error
+		
 		state, err = p.line[0].Run(ctx, state)
 		if err != nil {
 			return nil, fmt.Errorf("line: run: %w", err)

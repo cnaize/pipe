@@ -31,14 +31,13 @@ func (p *OpenFilesPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 		state = types.NewState()
 	}
 
+	var syncErr types.SyncError
 	var toClose []io.Closer
 	defer func() {
 		for _, closer := range toClose {
-			closer.Close()
+			syncErr.Join(closer.Close())
 		}
 	}()
-
-	var syncErr types.SyncError
 
 	files := state.Files
 	state.Files = func(yield func(*types.File) bool) {
@@ -52,14 +51,14 @@ func (p *OpenFilesPipe) Run(ctx context.Context, state *types.State) (*types.Sta
 			file, err := os.Open(name)
 			if err != nil {
 				syncErr.Join(fmt.Errorf("localfs: open files: open: %w", err))
-				continue
+				break
 			}
 			toClose = append(toClose, file)
 
 			stat, err := file.Stat()
 			if err != nil {
 				syncErr.Join(fmt.Errorf("localfs: open files: stat: %w", err))
-				continue
+				break
 			}
 
 			if !yield(&types.File{

@@ -41,22 +41,16 @@ func (p *ZipFilesPipe) Run(ctx context.Context, state *types.State) (*types.Stat
 			defer zipWriter.Close()
 
 			for file := range files {
-				err := func() error {
-					fileData := file.Data
-					file.Data = nil
+				zipFile, err := zipWriter.Create(filepath.Base(file.Name))
+				if err != nil {
+					syncErr.Join(fmt.Errorf("archive: zip files: create: %w", err))
+					break
+				}
 
-					zipFile, err := zipWriter.Create(filepath.Base(file.Name))
-					if err != nil {
-						return fmt.Errorf("archive: zip files: create: %w", err)
-					}
-
-					if _, err := io.Copy(zipFile, fileData); err != nil {
-						return fmt.Errorf("archive: zip files: copy: %w", err)
-					}
-
-					return nil
-				}()
-				syncErr.Join(err)
+				if _, err := io.Copy(zipFile, file.Data); err != nil {
+					syncErr.Join(fmt.Errorf("archive: zip files: copy: %w", err))
+					break
+				}
 			}
 		}()
 

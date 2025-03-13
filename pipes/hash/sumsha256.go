@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"sync"
 
 	"github.com/cnaize/pipe"
 	"github.com/cnaize/pipe/pipes/common"
@@ -40,41 +41,44 @@ func (p *SumSha256Pipe) Run(ctx context.Context, state *types.State) (*types.Sta
 		next, stop := iter.Pull(files)
 		defer stop()
 
+		var wg sync.WaitGroup
 		for _, expected := range p.expected {
-			ok, err := func() (bool, error) {
-				file, ok := next()
-				if !ok {
-					return false, nil
-				}
-
-				hasher := sha256.New()
-				pipeReader, pipeWriter := io.Pipe()
-
-				fileData := file.Data
-				file.Data = pipeReader
-
-				go func() {
-					defer pipeWriter.Close()
-
-					if _, err := io.Copy(io.MultiWriter(hasher, pipeWriter), fileData); err != nil {
-						syncErr.Join(fmt.Errorf("hash: sum sha256: copy: %w", err))
-						return
-					}
-
-					file.Hash = base64.URLEncoding.EncodeToString(hasher.Sum(nil))
-					if expected != "" && file.Hash != expected {
-						syncErr.Join(fmt.Errorf("hash: sum sha256: check: %w", types.ErrInvalidHash))
-						return
-					}
-				}()
-
-				return yield(file), nil
-			}()
-			syncErr.Join(err)
+			file, ok := next()
 			if !ok {
 				break
 			}
+
+			pipeReader, pipeWriter := io.Pipe()
+
+			fileData := file.Data
+			file.Data = pipeReader
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer pipeWriter.Close()
+
+				hasher := sha256.New()
+				_, err := io.Copy(io.MultiWriter(hasher, pipeWriter), fileData)
+				if err != nil {
+					syncErr.Join(fmt.Errorf("hash: sum sha256: copy: %w", err))
+					return
+				}
+
+				file.Hash = base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+
+				if expected != "" && file.Hash != expected {
+					syncErr.Join(fmt.Errorf("hash: sum sha256: check: %w", types.ErrInvalidHash))
+					return
+				}
+			}()
+
+			if !yield(file) {
+				break
+			}
 		}
+		
+		wg.Wait()
 	}
 
 	state, err := p.BasePipe.Run(ctx, state)

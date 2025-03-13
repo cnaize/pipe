@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/common"
 	"github.com/cnaize/pipe/pipes/modify"
 	"github.com/cnaize/pipe/pipes/state"
+	"github.com/cnaize/pipe/types"
 )
 
 func main() {
@@ -69,7 +72,7 @@ func main() {
 	// print the output buffers data
 	fmt.Printf("=== Json ===\n\n")
 	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
-	fmt.Printf("--> Redult data 1:\n%s\n", outData1.String())
+	fmt.Printf("--> Result data 1:\n%s\n", outData1.String())
 
 	// reset the buffers
 	inData0.Reset()
@@ -107,5 +110,45 @@ func main() {
 	// print the output buffers data
 	fmt.Printf("=== Yaml ===\n\n")
 	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
-	fmt.Printf("--> Redult data 1:\n%s\n", outData1.String())
+	fmt.Printf("--> Result data 1:\n%s\n", outData1.String())
+
+	// reset the buffers
+	inData0.Reset()
+	inData1.Reset()
+	outData0.Reset()
+	outData1.Reset()
+
+	// create two example files
+	inData0.WriteString("name: file_0 enabled: true")
+	inData1.WriteString("name: file_1 count: 10")
+
+	// create file modify function
+	fileModifyFn := func(file *types.File) error {
+		data, err := io.ReadAll(file.Data)
+		if err != nil {
+			return err
+		}
+
+		newData := strings.ReplaceAll(string(data), "enabled: true", "enabled: false")
+
+		file.Data = strings.NewReader(newData)
+		file.Size = int64(len(newData))
+
+		return nil
+	}
+
+	// craeate file pipeline
+	fileLine := pipes.Line(
+		readLine,
+		modify.Files(fileModifyFn, fileModifyFn),
+		writeLine,
+	)
+
+	// run the file pipeline
+	_, _ = fileLine.Run(context.Background(), nil)
+
+	// print the output buffers data
+	fmt.Printf("=== File ===\n\n")
+	fmt.Printf("--> Result data 0:\n%s\n\n", outData0.String())
+	fmt.Printf("--> Result data 1:\n%s\n\n", outData1.String())
 }

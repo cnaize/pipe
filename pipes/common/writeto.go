@@ -40,32 +40,28 @@ func (p *WriteToPipe) Run(ctx context.Context, state *types.State) (*types.State
 
 		var wg sync.WaitGroup
 		for _, writer := range p.writers {
-			ok, err := func() (bool, error) {
-				file, ok := next()
-				if !ok {
-					return false, nil
+			file, ok := next()
+			if !ok {
+				break
+			}
+
+			fileData := file.Data
+			file.Data = nil
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				size, err := io.Copy(writer, fileData)
+				if err != nil {
+					syncErr.Join(fmt.Errorf("common: write to: copy: %w", err))
+					return
 				}
 
-				fileData := file.Data
-				file.Data = nil
-
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-
-					size, err := io.Copy(writer, fileData)
-					if err != nil {
-						syncErr.Join(fmt.Errorf("common: write to: copy: %w", err))
-						return
-					}
-
-					file.Size = size
-				}()
-
-				return yield(file), nil
+				file.Size = size
 			}()
-			syncErr.Join(err)
-			if !ok {
+
+			if !yield(file) {
 				break
 			}
 		}

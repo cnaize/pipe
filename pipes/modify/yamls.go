@@ -45,43 +45,39 @@ func (p *YamlsPipe) Run(ctx context.Context, state *types.State) (*types.State, 
 
 		var wg sync.WaitGroup
 		for _, modifier := range p.modifiers {
-			ok, err := func() (bool, error) {
-				file, ok := next()
-				if !ok {
-					return false, nil
+			file, ok := next()
+			if !ok {
+				break
+			}
+
+			pipeReader, pipeWriter := io.Pipe()
+
+			fileData := file.Data
+			file.Data = pipeReader
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer pipeWriter.Close()
+
+				var yamlData map[any]any
+				if err := yaml.NewDecoder(fileData).Decode(&yamlData); err != nil {
+					syncErr.Join(fmt.Errorf("yaml: modify: unmarshal: %w", err))
+					return
 				}
 
-				pipeReader, pipeWriter := io.Pipe()
+				if err := modifier(yamlData); err != nil {
+					syncErr.Join(fmt.Errorf("yaml: modify: modifier: %w", err))
+					return
+				}
 
-				fileData := file.Data
-				file.Data = pipeReader
-
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					defer pipeWriter.Close()
-
-					var yamlData map[any]any
-					if err := yaml.NewDecoder(fileData).Decode(&yamlData); err != nil {
-						syncErr.Join(fmt.Errorf("yaml: modify: unmarshal: %w", err))
-						return
-					}
-
-					if err := modifier(yamlData); err != nil {
-						syncErr.Join(fmt.Errorf("yaml: modify: modifier: %w", err))
-						return
-					}
-
-					if err := yaml.NewEncoder(pipeWriter).Encode(&yamlData); err != nil {
-						syncErr.Join(fmt.Errorf("yaml: modify: marshal: %w", err))
-						return
-					}
-				}()
-
-				return yield(file), nil
+				if err := yaml.NewEncoder(pipeWriter).Encode(&yamlData); err != nil {
+					syncErr.Join(fmt.Errorf("yaml: modify: marshal: %w", err))
+					return
+				}
 			}()
-			syncErr.Join(err)
-			if !ok {
+
+			if !yield(file) {
 				break
 			}
 		}

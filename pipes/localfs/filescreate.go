@@ -42,45 +42,41 @@ func (p *CreateFilesPipe) Run(ctx context.Context, state *types.State) (*types.S
 
 		var wg sync.WaitGroup
 		for _, name := range p.names {
-			ok, err := func() (bool, error) {
-				file, ok := next()
-				if !ok {
-					return false, nil
+			file, ok := next()
+			if !ok {
+				break
+			}
+
+			fileData := file.Data
+			file.Data = nil
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				newFile, err := os.Create(name)
+				if err != nil {
+					syncErr.Join(fmt.Errorf("localfs: create files: create: %w", err))
+					return
+				}
+				defer newFile.Close()
+
+				if _, err := io.Copy(newFile, fileData); err != nil {
+					syncErr.Join(fmt.Errorf("localfs: create files: copy: %w", err))
+					return
 				}
 
-				fileData := file.Data
-				file.Data = nil
+				stat, err := newFile.Stat()
+				if err != nil {
+					syncErr.Join(fmt.Errorf("localfs: create files: stat: %w", err))
+					return
+				}
 
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-
-					newFile, err := os.Create(name)
-					if err != nil {
-						syncErr.Join(fmt.Errorf("localfs: create files: create: %w", err))
-						return
-					}
-					defer newFile.Close()
-
-					if _, err := io.Copy(newFile, fileData); err != nil {
-						syncErr.Join(fmt.Errorf("localfs: create files: copy: %w", err))
-						return
-					}
-
-					stat, err := newFile.Stat()
-					if err != nil {
-						syncErr.Join(fmt.Errorf("localfs: create files: stat: %w", err))
-						return
-					}
-
-					file.Name = newFile.Name()
-					file.Size = stat.Size()
-				}()
-
-				return yield(file), nil
+				file.Name = newFile.Name()
+				file.Size = stat.Size()
 			}()
-			syncErr.Join(err)
-			if !ok {
+
+			if !yield(file) {
 				break
 			}
 		}
