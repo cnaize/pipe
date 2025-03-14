@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	// craeate a pipeline
+	// create a pipeline
 	pipeline := pipes.Line(
 		// set execution timeout
 		common.Timeout(time.Second),
