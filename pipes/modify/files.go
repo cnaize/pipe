@@ -10,17 +10,17 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type FileFn func(file *types.File) error
+type Fn[T any] func(data T) error
 
 var _ pipe.Pipe = (*FilesPipe)(nil)
 
 type FilesPipe struct {
 	*common.BasePipe
 
-	modifiers []FileFn
+	modifiers []Fn[*types.File]
 }
 
-func Files(modifiers ...FileFn) *FilesPipe {
+func Files(modifiers ...Fn[*types.File]) *FilesPipe {
 	return &FilesPipe{
 		BasePipe:  common.NewBase(),
 		modifiers: modifiers,

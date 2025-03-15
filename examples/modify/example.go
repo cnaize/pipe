@@ -15,7 +15,15 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
+type Data struct {
+	Name    string `json:"name" yaml:"name"`
+	Count   int    `json:"count" yaml:"count"`
+	Enabled bool   `json:"enabled" yaml:"enabled"`
+}
+
 func main() {
+	// ====== Json ======
+
 	// create two example jsons
 	inData0 := bytes.NewBufferString(`{
 		"name": "json_0",
@@ -47,11 +55,9 @@ func main() {
 	)
 
 	// create json modify function
-	jsonModifyFn := func(data map[string]any) error {
-		if enabled, ok := data["enabled"]; ok {
-			enabled := enabled.(bool)
-			data["enabled"] = !enabled
-		}
+	jsonModifyFn := func(data *Data) error {
+		data.Count++
+		data.Enabled = !data.Enabled
 
 		return nil
 	}
@@ -70,7 +76,7 @@ func main() {
 	_, _ = jsonLine.Run(context.Background(), nil)
 
 	// print the output buffers data
-	fmt.Printf("=== Json ===\n\n")
+	fmt.Printf("====== Json ======\n\n")
 	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
 	fmt.Printf("--> Result data 1:\n%s\n", outData1.String())
 
@@ -80,16 +86,16 @@ func main() {
 	outData0.Reset()
 	outData1.Reset()
 
+	// ====== Yaml ======
+
 	// create two example yamls
 	inData0.WriteString("name: yaml_0\nenabled: true")
 	inData1.WriteString("name: yaml_1\ncount: 10")
 
 	// create yaml modify function
-	yamlModifyFn := func(data map[any]any) error {
-		if enabled, ok := data["enabled"]; ok {
-			enabled := enabled.(bool)
-			data["enabled"] = !enabled
-		}
+	yamlModifyFn := func(data *Data) error {
+		data.Count++
+		data.Enabled = !data.Enabled
 
 		return nil
 	}
@@ -108,7 +114,7 @@ func main() {
 	_, _ = yamlLine.Run(context.Background(), nil)
 
 	// print the output buffers data
-	fmt.Printf("=== Yaml ===\n\n")
+	fmt.Printf("====== Yaml ======\n\n")
 	fmt.Printf("--> Result data 0:\n%s\n", outData0.String())
 	fmt.Printf("--> Result data 1:\n%s\n", outData1.String())
 
@@ -117,6 +123,8 @@ func main() {
 	inData1.Reset()
 	outData0.Reset()
 	outData1.Reset()
+
+	// ====== File ======
 
 	// create two example files
 	inData0.WriteString("name: file_0 enabled: true")
@@ -148,7 +156,7 @@ func main() {
 	_, _ = fileLine.Run(context.Background(), nil)
 
 	// print the output buffers data
-	fmt.Printf("=== File ===\n\n")
+	fmt.Printf("====== File ======\n\n")
 	fmt.Printf("--> Result data 0:\n%s\n\n", outData0.String())
 	fmt.Printf("--> Result data 1:\n%s\n\n", outData1.String())
 }

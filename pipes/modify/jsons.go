@@ -13,24 +13,22 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type JsonFn func(data map[string]any) error
+var _ pipe.Pipe = (*JsonsPipe[any])(nil)
 
-var _ pipe.Pipe = (*JsonsPipe)(nil)
-
-type JsonsPipe struct {
+type JsonsPipe[T any] struct {
 	*common.BasePipe
 
-	modifiers []JsonFn
+	modifiers []Fn[T]
 }
 
-func Jsons(modifiers ...JsonFn) *JsonsPipe {
-	return &JsonsPipe{
+func Jsons[T any](modifiers ...Fn[T]) *JsonsPipe[T] {
+	return &JsonsPipe[T]{
 		BasePipe:  common.NewBase(),
 		modifiers: modifiers,
 	}
 }
 
-func (p *JsonsPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *JsonsPipe[T]) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state == nil {
 		state = types.NewState()
 	}
@@ -59,18 +57,18 @@ func (p *JsonsPipe) Run(ctx context.Context, state *types.State) (*types.State, 
 				defer wg.Done()
 				defer pipeWriter.Close()
 
-				var jsonData map[string]any
-				if err := json.NewDecoder(fileData).Decode(&jsonData); err != nil {
+				var data T
+				if err := json.NewDecoder(fileData).Decode(&data); err != nil {
 					syncErr.Join(fmt.Errorf("json: modify: unmarshal: %w", err))
 					return
 				}
 
-				if err := modifier(jsonData); err != nil {
+				if err := modifier(data); err != nil {
 					syncErr.Join(fmt.Errorf("json: modify: modifier: %w", err))
 					return
 				}
 
-				if err := json.NewEncoder(pipeWriter).Encode(&jsonData); err != nil {
+				if err := json.NewEncoder(pipeWriter).Encode(&data); err != nil {
 					syncErr.Join(fmt.Errorf("json: modify: marshal: %w", err))
 					return
 				}

@@ -15,6 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type Data struct {
+	Name    string `json:"name" yaml:"name"`
+	Count   int    `json:"count" yaml:"count"`
+	Enabled bool   `json:"enabled" yaml:"enabled"`
+}
+
 func (suite *BaseTestSuite) TestModifyPipe() {
 	inData0 := bytes.NewBufferString(`{
 		"name": "json_0",
@@ -38,11 +44,9 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		state.Consume(),
 	)
 
-	jsonModifyFn := func(data map[string]any) error {
-		if enabled, ok := data["enabled"]; ok {
-			enabled := enabled.(bool)
-			data["enabled"] = !enabled
-		}
+	jsonModifyFn := func(data *Data) error {
+		data.Count++
+		data.Enabled = !data.Enabled
 
 		return nil
 	}
@@ -61,11 +65,11 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {
-			require.Equal(suite.T(), int64(34), file.Size)
-			require.EqualValues(suite.T(), `{"enabled":false,"name":"json_0"}`+string('\n'), outData0.String())
+			require.Equal(suite.T(), int64(44), file.Size)
+			require.EqualValues(suite.T(), `{"name":"json_0","count":1,"enabled":false}`+string('\n'), outData0.String())
 		} else {
-			require.Equal(suite.T(), int64(29), file.Size)
-			require.EqualValues(suite.T(), `{"count":10,"name":"json_1"}`+string('\n'), outData1.String())
+			require.Equal(suite.T(), int64(44), file.Size)
+			require.EqualValues(suite.T(), `{"name":"json_1","count":11,"enabled":true}`+string('\n'), outData1.String())
 		}
 
 		i++
@@ -79,11 +83,9 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 	inData0.WriteString("name: yaml_0\nenabled: true")
 	inData1.WriteString("name: yaml_1\ncount: 10")
 
-	yamlModifyFn := func(data map[any]any) error {
-		if enabled, ok := data["enabled"]; ok {
-			enabled := enabled.(bool)
-			data["enabled"] = !enabled
-		}
+	yamlModifyFn := func(data *Data) error {
+		data.Count++
+		data.Enabled = !data.Enabled
 
 		return nil
 	}
@@ -102,11 +104,11 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {
-			require.Equal(suite.T(), int64(28), file.Size)
-			require.EqualValues(suite.T(), "enabled: false\nname: yaml_0"+string('\n'), outData0.String())
+			require.Equal(suite.T(), int64(37), file.Size)
+			require.EqualValues(suite.T(), "name: yaml_0\ncount: 1\nenabled: false\n", outData0.String())
 		} else {
-			require.Equal(suite.T(), int64(23), file.Size)
-			require.EqualValues(suite.T(), "count: 10\nname: yaml_1"+string('\n'), outData1.String())
+			require.Equal(suite.T(), int64(37), file.Size)
+			require.EqualValues(suite.T(), "name: yaml_1\ncount: 11\nenabled: true\n", outData1.String())
 		}
 
 		i++

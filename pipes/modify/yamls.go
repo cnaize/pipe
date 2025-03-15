@@ -14,24 +14,22 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type YamlFn func(data map[any]any) error
+var _ pipe.Pipe = (*YamlsPipe[any])(nil)
 
-var _ pipe.Pipe = (*YamlsPipe)(nil)
-
-type YamlsPipe struct {
+type YamlsPipe[T any] struct {
 	*common.BasePipe
 
-	modifiers []YamlFn
+	modifiers []Fn[T]
 }
 
-func Yamls(modifiers ...YamlFn) *YamlsPipe {
-	return &YamlsPipe{
+func Yamls[T any](modifiers ...Fn[T]) *YamlsPipe[T] {
+	return &YamlsPipe[T]{
 		BasePipe:  common.NewBase(),
 		modifiers: modifiers,
 	}
 }
 
-func (p *YamlsPipe) Run(ctx context.Context, state *types.State) (*types.State, error) {
+func (p *YamlsPipe[T]) Run(ctx context.Context, state *types.State) (*types.State, error) {
 	if state == nil {
 		state = types.NewState()
 	}
@@ -60,18 +58,18 @@ func (p *YamlsPipe) Run(ctx context.Context, state *types.State) (*types.State, 
 				defer wg.Done()
 				defer pipeWriter.Close()
 
-				var yamlData map[any]any
-				if err := yaml.NewDecoder(fileData).Decode(&yamlData); err != nil {
+				var data T
+				if err := yaml.NewDecoder(fileData).Decode(&data); err != nil {
 					syncErr.Join(fmt.Errorf("yaml: modify: unmarshal: %w", err))
 					return
 				}
 
-				if err := modifier(yamlData); err != nil {
+				if err := modifier(data); err != nil {
 					syncErr.Join(fmt.Errorf("yaml: modify: modifier: %w", err))
 					return
 				}
 
-				if err := yaml.NewEncoder(pipeWriter).Encode(&yamlData); err != nil {
+				if err := yaml.NewEncoder(pipeWriter).Encode(&data); err != nil {
 					syncErr.Join(fmt.Errorf("yaml: modify: marshal: %w", err))
 					return
 				}
