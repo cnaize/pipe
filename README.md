@@ -3,7 +3,7 @@
 
 ### WARNING: early stage, contibutors are welcome
 
-## Example:
+## Example (see [examples](https://github.com/cnaize/pipe/tree/main/examples)):
 ```go
 package main
 
