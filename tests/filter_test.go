@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/common"
-	"github.com/cnaize/pipe/pipes/modify"
+	"github.com/cnaize/pipe/pipes/filter"
 	"github.com/cnaize/pipe/pipes/state"
 	"github.com/cnaize/pipe/types"
 	"github.com/stretchr/testify/require"
 )
 
-func (suite *BaseTestSuite) TestModifyPipe() {
+func (suite *BaseTestSuite) TestFilteripe() {
 	inData0 := bytes.NewBufferString(`{"name": "json_0","enabled": true}`)
 	inData1 := bytes.NewBufferString(`{"name": "json_1","count": 10}`)
 
@@ -32,16 +31,13 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		state.Consume(),
 	)
 
-	jsonModifyFn := func(data *Data) error {
-		data.Count++
-		data.Enabled = !data.Enabled
-
-		return nil
+	jsonFilterFn := func(data Data) bool {
+		return data.Enabled
 	}
 
 	jsonLine := pipes.Line(
 		readLine,
-		modify.Jsons(jsonModifyFn, jsonModifyFn),
+		filter.Jsons(jsonFilterFn, jsonFilterFn),
 		writeLine,
 	)
 
@@ -53,11 +49,11 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {
-			require.Equal(suite.T(), int64(44), file.Size)
-			require.EqualValues(suite.T(), `{"name":"json_0","count":1,"enabled":false}`+string('\n'), outData0.String())
+			require.Equal(suite.T(), int64(43), file.Size)
+			require.EqualValues(suite.T(), `{"name":"json_0","count":0,"enabled":true}`+string('\n'), outData0.String())
 		} else {
-			require.Equal(suite.T(), int64(44), file.Size)
-			require.EqualValues(suite.T(), `{"name":"json_1","count":11,"enabled":true}`+string('\n'), outData1.String())
+			require.Equal(suite.T(), 0, file.Size)
+			require.Empty(suite.T(), outData1.String())
 		}
 
 		i++
@@ -71,16 +67,13 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 	inData0.WriteString("name: yaml_0\nenabled: true")
 	inData1.WriteString("name: yaml_1\ncount: 10")
 
-	yamlModifyFn := func(data *Data) error {
-		data.Count++
-		data.Enabled = !data.Enabled
-
-		return nil
+	yamlFilterFn := func(data Data) bool {
+		return data.Enabled
 	}
 
 	yamlLine := pipes.Line(
 		readLine,
-		modify.Yamls(yamlModifyFn, yamlModifyFn),
+		filter.Yamls(yamlFilterFn, yamlFilterFn),
 		writeLine,
 	)
 
@@ -92,11 +85,11 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {
-			require.Equal(suite.T(), int64(37), file.Size)
-			require.EqualValues(suite.T(), "name: yaml_0\ncount: 1\nenabled: false\n", outData0.String())
+			require.Equal(suite.T(), int64(36), file.Size)
+			require.EqualValues(suite.T(), "name: yaml_0\ncount: 0\nenabled: true\n", outData0.String())
 		} else {
-			require.Equal(suite.T(), int64(37), file.Size)
-			require.EqualValues(suite.T(), "name: yaml_1\ncount: 11\nenabled: true\n", outData1.String())
+			require.Equal(suite.T(), 0, file.Size)
+			require.Empty(suite.T(), outData1.String())
 		}
 
 		i++
@@ -110,23 +103,24 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 	inData0.WriteString("name: file_0 enabled: true")
 	inData1.WriteString("name: file_1 count: 10")
 
-	fileModifyFn := func(file *types.File) error {
+	fileFilterFn := func(file *types.File) bool {
 		data, err := io.ReadAll(file.Data)
 		if err != nil {
-			return err
+			return false
 		}
 
-		newData := strings.ReplaceAll(string(data), "enabled: true", "enabled: false")
+		if !bytes.Contains(data, []byte("enabled: true")) {
+			return false
+		}
 
-		file.Data = strings.NewReader(newData)
-		file.Size = int64(len(newData))
+		file.Data = bytes.NewReader(data)
 
-		return nil
+		return true
 	}
 
 	fileLine := pipes.Line(
 		readLine,
-		modify.Files(fileModifyFn, fileModifyFn),
+		filter.Files(fileFilterFn, fileFilterFn),
 		writeLine,
 	)
 
@@ -138,11 +132,11 @@ func (suite *BaseTestSuite) TestModifyPipe() {
 		require.NotEmpty(suite.T(), file.Size)
 
 		if i == 0 {
-			require.Equal(suite.T(), int64(27), file.Size)
-			require.EqualValues(suite.T(), "name: file_0 enabled: false", outData0.String())
+			require.Equal(suite.T(), int64(26), file.Size)
+			require.EqualValues(suite.T(), "name: file_0 enabled: true", outData0.String())
 		} else {
-			require.Equal(suite.T(), int64(22), file.Size)
-			require.EqualValues(suite.T(), "name: file_1 count: 10", outData1.String())
+			require.Equal(suite.T(), 0, file.Size)
+			require.Empty(suite.T(), outData1.String())
 		}
 
 		i++

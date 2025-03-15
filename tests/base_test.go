@@ -8,6 +8,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+type Data struct {
+	Name    string `json:"name" yaml:"name"`
+	Count   int    `json:"count" yaml:"count"`
+	Enabled bool   `json:"enabled" yaml:"enabled"`
+}
+
 type BaseTestSuite struct {
 	suite.Suite
 }

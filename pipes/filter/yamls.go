@@ -1,4 +1,4 @@
-package modify
+package filter
 
 import (
 	"context"
@@ -19,13 +19,13 @@ var _ pipe.Pipe = (*YamlsPipe[any])(nil)
 type YamlsPipe[T any] struct {
 	*common.BasePipe
 
-	modifiers []Fn[T]
+	filters []Fn[T]
 }
 
-func Yamls[T any](modifiers ...Fn[T]) *YamlsPipe[T] {
+func Yamls[T any](filters ...Fn[T]) *YamlsPipe[T] {
 	return &YamlsPipe[T]{
-		BasePipe:  common.NewBase(),
-		modifiers: modifiers,
+		BasePipe: common.NewBase(),
+		filters:  filters,
 	}
 }
 
@@ -42,15 +42,23 @@ func (p *YamlsPipe[T]) Run(ctx context.Context, state *types.State) (*types.Stat
 		defer stop()
 
 		var wg sync.WaitGroup
-		for _, modifier := range p.modifiers {
+		for _, filter := range p.filters {
 			file, ok := next()
 			if !ok {
 				break
 			}
 
-			pipeReader, pipeWriter := io.Pipe()
+			var data T
+			if err := yaml.NewDecoder(file.Data).Decode(&data); err != nil {
+				syncErr.Join(fmt.Errorf("filter: yamls: unmarshal: %w", err))
+				return
+			}
 
-			fileData := file.Data
+			if !filter(data) {
+				continue
+			}
+
+			pipeReader, pipeWriter := io.Pipe()
 			file.Data = pipeReader
 
 			wg.Add(1)
@@ -58,19 +66,8 @@ func (p *YamlsPipe[T]) Run(ctx context.Context, state *types.State) (*types.Stat
 				defer wg.Done()
 				defer pipeWriter.Close()
 
-				var data T
-				if err := yaml.NewDecoder(fileData).Decode(&data); err != nil {
-					syncErr.Join(fmt.Errorf("modify: yamls: unmarshal: %w", err))
-					return
-				}
-
-				if err := modifier(data); err != nil {
-					syncErr.Join(fmt.Errorf("modify: yamls: modifier: %w", err))
-					return
-				}
-
 				if err := yaml.NewEncoder(pipeWriter).Encode(&data); err != nil {
-					syncErr.Join(fmt.Errorf("modify: yamls: marshal: %w", err))
+					syncErr.Join(fmt.Errorf("filter: yamls: marshal: %w", err))
 					return
 				}
 			}()

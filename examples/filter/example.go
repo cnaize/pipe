@@ -9,7 +9,7 @@ import (
 
 	"github.com/cnaize/pipe/pipes"
 	"github.com/cnaize/pipe/pipes/common"
-	"github.com/cnaize/pipe/pipes/modify"
+	"github.com/cnaize/pipe/pipes/filter"
 	"github.com/cnaize/pipe/pipes/state"
 	"github.com/cnaize/pipe/types"
 )
@@ -46,20 +46,17 @@ func main() {
 		state.Consume(),
 	)
 
-	// create json modify function
-	jsonModifyFn := func(data *Data) error {
-		data.Count++
-		data.Enabled = !data.Enabled
-
-		return nil
+	// create json filter function
+	jsonFilterFn := func(data *Data) bool {
+		return data.Enabled
 	}
 
 	// craeate json pipeline
 	jsonLine := pipes.Line(
 		// pass the read pipeline
 		readLine,
-		// pass the json modify function
-		modify.Jsons(jsonModifyFn, jsonModifyFn),
+		// pass the json filter function
+		filter.Jsons(jsonFilterFn, jsonFilterFn),
 		// pass the write pipeline
 		writeLine,
 	)
@@ -83,27 +80,28 @@ func main() {
 	inData0.WriteString("name: file_0 enabled: true")
 	inData1.WriteString("name: file_1 count: 10")
 
-	// create file modify function
-	fileModifyFn := func(file *types.File) error {
+	// create file filter function
+	fileFilterFn := func(file *types.File) bool {
 		data, err := io.ReadAll(file.Data)
 		if err != nil {
-			return err
+			return false
 		}
 
-		newData := bytes.ReplaceAll(data, []byte("enabled: true"), []byte("enabled: false"))
+		if !bytes.Contains(data, []byte("enabled: true")) {
+			return false
+		}
 
-		file.Data = bytes.NewReader(newData)
-		file.Size = int64(len(newData))
+		file.Data = bytes.NewReader(data)
 
-		return nil
+		return true
 	}
 
 	// craeate file pipeline
 	fileLine := pipes.Line(
 		// pass the read pipeline
 		readLine,
-		// pass the file modify function
-		modify.Files(fileModifyFn, fileModifyFn),
+		// pass the file filter function
+		filter.Files(fileFilterFn, fileFilterFn),
 		// pass the write pipeline
 		writeLine,
 	)

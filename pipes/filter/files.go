@@ -1,8 +1,7 @@
-package modify
+package filter
 
 import (
 	"context"
-	"fmt"
 	"iter"
 
 	"github.com/cnaize/pipe"
@@ -10,20 +9,20 @@ import (
 	"github.com/cnaize/pipe/types"
 )
 
-type Fn[T any] func(data T) error
+type Fn[T any] func(data T) bool
 
 var _ pipe.Pipe = (*FilesPipe)(nil)
 
 type FilesPipe struct {
 	*common.BasePipe
 
-	modifiers []Fn[*types.File]
+	filters []Fn[*types.File]
 }
 
-func Files(modifiers ...Fn[*types.File]) *FilesPipe {
+func Files(filters ...Fn[*types.File]) *FilesPipe {
 	return &FilesPipe{
-		BasePipe:  common.NewBase(),
-		modifiers: modifiers,
+		BasePipe: common.NewBase(),
+		filters:  filters,
 	}
 }
 
@@ -39,15 +38,14 @@ func (p *FilesPipe) Run(ctx context.Context, state *types.State) (*types.State, 
 		next, stop := iter.Pull(files)
 		defer stop()
 
-		for _, modifier := range p.modifiers {
+		for _, filter := range p.filters {
 			file, ok := next()
 			if !ok {
 				break
 			}
 
-			if err := modifier(file); err != nil {
-				syncErr.Join(fmt.Errorf("modify: files: modifier: %w", err))
-				return
+			if !filter(file) {
+				continue
 			}
 
 			if !yield(file) {

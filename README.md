@@ -1,7 +1,7 @@
 # Pipe
 ## Repo philosophy — everything is a pipe
 
-### WARNING: very early stage, contibutors are welcome
+### WARNING: early stage, contibutors are welcome
 
 ## Example:
 ```go
